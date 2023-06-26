@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<package name="stsimNestweb" displayName="ST-Sim Nestweb" isAddOn="True" extendsPackage="stsim" version="1.0.0">
+<package name="stsimNestweb" displayName="ST-Sim Nestweb" isAddOn="True" extendsPackage="stsim" version="1.0.1">
   <transformers>
-    <transformer name="modelHabitat" displayName="Model Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="modelHabitat.R" runContext="AllowRemote" condaEnv="rsyncrosim.yml">
+    <transformer name="modelHabitat" displayName="Model Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="modelHabitat.R" runContext="AllowRemote" condaEnv="stsimnestweb.yml">
       <pipeline>
         <datafeed name="OutputHabitatAmount" type="Output" />
         <datafeed name="OutputSpatialHabitat" type="Output" />
@@ -25,7 +25,7 @@
         <datafeed name="OutputSpatialHabitatChange" type="Output" />
       </pipeline>
     </transformer>
-    <transformer name="summarizeHabitat" displayName="Summarize Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="summarizeHabitat.R" runContext="LocalOnly" condaEnv="rsyncrosim.yml">
+    <transformer name="summarizeHabitat" displayName="Summarize Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="summarizeHabitat.R" runContext="LocalOnly">
       <pipeline>
         <datafeed name="OutputSpatialHabitat" type="Input" />
         <datafeed name="OutputSpatialHabitatAverage" type="Output" />
