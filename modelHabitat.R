@@ -190,51 +190,53 @@ for(iteration in iterations){
   for(timestep in timesteps){
     
     # Load aspen cover and diameter
-    aspenCover <- datasheetRaster(
+    aspenCover <- datasheetSpatRaster(
       ssimObject = myScenario, 
       datasheet = "stsimsf_OutputSpatialStockGroup", 
       iteration = iteration, 
       timestep = timestep,
       filterColumn = "StockGroupID",
-      filterValue = "Aspen Cover (%) [Type]")
+      filterValue = "Deciduous Canopy Cover (%) [Type]")
     
     # Convert aspen raster to proportion (rather than percentage)
     aspenCover[] <- aspenCover[]/100
+    names(aspenCover) <- 'Perc_At'
     
-    diameter <- datasheetRaster(
-      ssimObject = myScenario, 
-      datasheet = "stsimsf_OutputSpatialStockGroup", 
-      iteration = iteration, 
-      timestep = timestep,
-      filterColumn = "StockGroupID",
-      filterValue = "Diameter (cm) [Type]")
+    # diameter <- datasheetSpatRaster(
+    #   ssimObject = myScenario, 
+    #   datasheet = "stsimsf_OutputSpatialStockGroup", 
+    #   iteration = iteration, 
+    #   timestep = timestep,
+    #   filterColumn = "StockGroupID",
+    #   filterValue = "Diameter (cm) [Type]")
     
     # Convert TST raster to binary Y/N cut data
-    cut <- datasheetRaster(
-      ssimObject = myScenario, 
-      datasheet = "stsim_OutputSpatialTST", 
-      iteration = iteration, 
-      timestep = timestep)[] %>% 
-      as.vector() %>% 
-      {case_when(. <= 60 ~ "Y", TRUE ~ "N")}
+    # cut <- datasheetSpatRaster(
+    #   ssimObject = myScenario, 
+    #   datasheet = "stsim_OutputSpatialTST", 
+    #   iteration = iteration, 
+    #   timestep = timestep)[] %>% 
+    #   as.vector() %>% 
+    #   {case_when(. <= 60 ~ "Y", TRUE ~ "N")}
     
     # Create dataframe of habitat suitability model inputs
     habitatSuitabilityDf <- data.frame(Perc_At = aspenCover[], 
-                                       Median_DBH = diameter[],
+                                     # Median_DBH = diameter[],
+                                       Median_DBH = 0,
                                        edge_near = 0,
                                        Num_2BI = 0,
                                        Mean_decay = 0,
                                        dist_to_cut = 0,
-                                       cut_harvest0 = cut, 
+                                     # cut_harvest0 = cut, 
+                                       cut_harvest0 = 'N', 
                                        Site = StrataData$Site)
     
     # Load state class raster
-    stateClass <- datasheetRaster(
+    stateClass <- datasheetSpatRaster(
       ssimObject = myScenario, 
       datasheet = "stsim_OutputSpatialState", 
       iteration = iteration, 
-      timestep = timestep) %>% 
-      rast()
+      timestep = timestep) 
     
     # Combine state class and stratum raster to create habitat masking raster
     stateClassStratum <- ((stateClass * 10) + stratum) %>% suppressWarnings()
