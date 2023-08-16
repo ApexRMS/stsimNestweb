@@ -11,6 +11,7 @@ suppressPackageStartupMessages(library(terra))
 suppressPackageStartupMessages(library(MuMIn))
 suppressPackageStartupMessages(library(VGAM))
 suppressPackageStartupMessages(library(unmarked))
+suppressPackageStartupMessages(library(glmmTMB))
 
 # Setup ----
 progressBar(type = "message", message = "Preparing inputs...")
@@ -242,33 +243,33 @@ for(iteration in iterations){
     stateClassStratum <- ((stateClass * 10) + stratum) %>% suppressWarnings()
     
     for(aSpecies in species){
+      # Create habitat mask
+      reclassMatrix <- invalidHabitatLookup %>% 
+        filter(Species == aSpecies) %>%  
+        select(-Species) %>% 
+        as.matrix()
+      
+      habitatMask <- stateClassStratum %>% 
+        classify(rcl = reclassMatrix)
+      
       # Predict habitat suitability
       model <- models[[aSpecies]]
       habitatSuitabilityDf$pred <- predict(model, newdata = habitatSuitabilityDf, type = "response", allow.new.levels = TRUE)
       habitatSuitabilityDf$pred[is.nan(habitatSuitabilityDf$pred)] <- NA
+      habitatSuitabilityDf$invalidHabitat <- habitatMask[] %>% as.vector()
+      
+      # Mask out invalid habitat
+      habitatSuitabilityDf <- habitatSuitabilityDf %>% 
+        mutate(finalHabitat = case_when(!is.na(invalidHabitat) ~ invalidHabitat,
+                                        is.na(invalidHabitat) ~ pred))
       
       # Output habitat raster
       if(timestep %in% timestepsSpatial) {
         outputFilename <- file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif")) %>% 
           normalizePath(mustWork = FALSE)
         
-        # Create habitat mask
-        reclassMatrix <- invalidHabitatLookup %>% 
-          filter(Species == aSpecies) %>%  
-          select(-Species) %>% 
-          as.matrix()
-        
-        habitatMask <- stateClassStratum %>% 
-          classify(rcl = reclassMatrix)
-        
-       maskedHabitat <- data.frame(
-         invalidHabitat = habitatMask[] %>% as.vector(),
-         habitat = habitatSuitabilityDf$pred) %>% 
-         mutate(finalHabitat = case_when(!is.na(invalidHabitat) ~ invalidHabitat,
-                                         is.na(invalidHabitat) ~ habitat))
-        
         # Create and write habitat raster
-        rast(templateRaster, vals = maskedHabitat$finalHabitat) %>% 
+        rast(templateRaster, vals = habitatSuitabilityDf$finalHabitat) %>% 
           writeRaster(outputFilename,
                       overwrite = TRUE,
                       NAflag = -9999)
@@ -280,9 +281,9 @@ for(iteration in iterations){
               normalizePath(mustWork = FALSE)
             
             habitatData <- data.frame(
-              ts2016 = rast(file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", min(timestepsSpatial), ".tif")))[] %>% as.vector(),
+              tsMin = rast(file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", min(timestepsSpatial), ".tif")))[] %>% as.vector(),
               tsCurrent = rast(file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif")))[] %>% as.vector()) %>% 
-              mutate(difference = tsCurrent - ts2016)
+              mutate(difference = tsCurrent - tsMin)
             
             rast(templateRaster, vals = habitatData$difference) %>% 
               writeRaster(outputFilename, 
@@ -297,7 +298,7 @@ for(iteration in iterations){
         OutputHabitatAmount <- bind_rows(
           OutputHabitatAmount, 
           habitatSuitabilityDf %>% 
-            dplyr::select(Amount = pred) %>% 
+            dplyr::select(Amount = finalHabitat) %>% 
             bind_cols(StrataData) %>% 
             filter(!is.na(Amount)) %>% 
             group_by(StratumID, SecondaryStratumID, Site) %>% 
