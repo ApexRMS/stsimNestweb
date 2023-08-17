@@ -60,8 +60,7 @@ if(OutputOptions$RasterOutputHAAverage) {
     habitatSuitability <- datasheetSpatRaster(
       ssimObject = myScenario, 
       datasheet = "stsimNestweb_OutputSpatialHabitat", 
-      timestep = timestep) %>% 
-      rast()
+      timestep = timestep) 
     
     # Repeat for habitat suitability change maps
     # NB: The first timestep is excluded because no change raster is calculated
@@ -71,8 +70,7 @@ if(OutputOptions$RasterOutputHAAverage) {
         habitatSuitabilityChange <- datasheetSpatRaster(
           ssimObject = myScenario, 
           datasheet = "stsimNestweb_OutputSpatialHabitatChange",
-          timestep = timestep) %>% 
-          rast()
+          timestep = timestep) 
       }
     }
     

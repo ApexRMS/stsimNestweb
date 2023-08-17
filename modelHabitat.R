@@ -8,7 +8,7 @@ options(stringsAsFactors=FALSE, SHAPE_RESTORE_SHX=T, useFancyQuotes = F, digits=
 library(rsyncrosim)
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(terra))
-suppressPackageStartupMessages(library(MuMIn))
+#suppressPackageStartupMessages(library(MuMIn))
 suppressPackageStartupMessages(library(VGAM))
 suppressPackageStartupMessages(library(unmarked))
 suppressPackageStartupMessages(library(glmmTMB))
