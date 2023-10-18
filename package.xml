@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package name="stsimNestweb" displayName="ST-Sim Nestweb" isAddOn="True" extendsPackage="stsim" version="1.0.1">
   <transformers>
-    <transformer name="modelHabitat" displayName="Model Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="modelHabitat.R" runContext="AllowRemote" condaEnv="stsimnestweb.yml">
+    <transformer name="modelHabitat" displayName="Model Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="modelHabitat.R" runContext="AllowRemote" condaEnv="stsimnestweb.yml" className="SyncroSim.StochasticTime.StochasticTimeTransformer" classAssembly="SyncroSim.StochasticTime" configurationSheet="stsim_RunControl">
       <pipeline>
         <datafeed name="OutputHabitatAmount" type="Output" />
         <datafeed name="OutputSpatialHabitat" type="Output" />
