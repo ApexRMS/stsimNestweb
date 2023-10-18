@@ -22,6 +22,10 @@ lookup <- function(x, old, new){
   dplyr::recode(x, !!!set_names(new, old))
 }
 
+## Directories ----
+spatialInputsDir <- file.path("Model-Inputs", "Spatial")
+tabularDataDir <- file.path("Data", "Tabular")
+
 ## Connect to SyncroSim ----
 myScenario <- scenario()
 
@@ -102,9 +106,13 @@ invalidHabitatLookup <- InvalidHabitat %>%
 # Square meter to hectare conversion
 scaleFactor <- 0.0001
 
-## Load spatial data ----
+## Load data ----
 # Load Stratum raster
 stratum <- rast(InitialConditionsSpatial$StratumFileName)
+
+# Load mean decay raster
+# zzz: Make this a relative path..?
+meanDecay <- rast(file.path("D:/nestweb/", spatialInputsDir, "mean-decay.tif"))
 
 # Create a template raster
 templateRaster <- stratum
@@ -114,14 +122,8 @@ names(templateRaster) <- "habitatSuitability"
 # Pixel resolution
 cellResolution <- templateRaster %>% res()
 
-# Pixel count
-#cellCount <- freq(templateRaster, value = 1)$count
-
 # Area of a pixel (square meter)
 cellArea <- cellResolution[1]^2
-
-# Total area
-# totalArea <- cellCount * cellArea
 
 # Get Strata and site values
 StrataData <- data.frame(
@@ -129,15 +131,13 @@ StrataData <- data.frame(
   SecondaryStratumID = rast(InitialConditionsSpatial$SecondaryStratumFileName)[] %>% as.vector(),
   Site = rast(Site$FileName)[] %>% as.vector() %>% lookup(SiteType$ID, SiteType$Name))
 
-# Get area of unique strata and site combinations
-# Area <- StrataData %>% 
-#   count(StratumID, SecondaryStratumID, Site) %>% 
-#   rename(Area = n) %>% 
-#   mutate(Area = Area * cellArea * scaleFactor)
-# 
-# # Add Area to StrataData
-# StrataData<- StrataData %>% 
-#   left_join(Area)
+# Get mean values for other habitat model variables
+# zzz: Make this a relative path..?
+rawNestwebData <- read_csv(file.path("D:/nestweb/", tabularDataDir, "Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>% 
+  mutate(Num_2BI = Num_2BI_FD + Num_2BI_Sx + Num_2BI_Pl) %>% 
+  dplyr::select(Num_Trees, Num_2BI) %>% 
+  summarise(MeanNumTrees = mean(Num_Trees),
+            MeanNum2BI = mean(Num_2BI))
 
 ## Setup files and folders ----
 
@@ -164,15 +164,16 @@ for(m in HabitatModel$ModelFileName) load(m)
 models <- modelNames %>% 
   map(get) %>% 
   set_names(HabitatModel$Name)
-rm(list = modelNames)
+#rm(list = modelNames)
+rm(modelNames)
 
 # Parameterize the sampling distribution for each parameter and model
 parameterTable <- imap_dfr(
   models,
   ~{
     # Connect clean parameter names to variable names in model fit
-    parameters <- c('Aspen Cover' = 'scale(Perc_At)',
-                    'Diameter' = 'scale(Median_DBH)')
+    parameters <- c('Aspen Cover' = 'cond(scale(Perc_At))',
+                    'Diameter' = 'cond(scale(Median_DBH))')
     means <- coef(.x)[parameters]
     stdErrors <- .x$coefArray[, 'Std. Error', parameters] %>% 
       apply(MARGIN = 2, FUN = mean, na.rm = TRUE) # MARGIN = 2 is used to average within columns 
@@ -188,8 +189,40 @@ for(iteration in iterations){
   parameterTable <- parameterTable %>% 
     mutate(value = map2_dbl(mean, sd, rnorm, n = 1))
   
-  for(timestep in timesteps){
+  # For each species model in models, update the aspen and diameter coefficients with value in parameterTable
+  #resampledModels <- models
+  print(str_c("Iteration:", iteration))
+  
+  for(i in seq(1:length(models))){
     
+    modelName <- names(models)[i]
+    parameterTableIt <- parameterTable %>% filter(species == modelName)
+      
+    speciesModel <- models[[i]]
+      
+    speciesModel$coefficients['subset','cond(scale(Perc_At))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Aspen Cover'] 
+    speciesModel$coefficients['subset','cond(scale(Median_DBH))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Diameter'] 
+    speciesModel$coefficients['full','cond(scale(Perc_At))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Aspen Cover'] 
+    speciesModel$coefficients['full','cond(scale(Median_DBH))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Diameter'] 
+    
+    models[[i]] <- speciesModel
+    
+    print(str_c(modelName, ", ", "Sampled aspen: ",parameterTableIt$value[parameterTableIt$parameter == 'Aspen Cover']))
+    print(str_c(modelName, ", ", "Sampled diameter: ", parameterTableIt$value[parameterTableIt$parameter == 'Diameter'] ))
+  }
+  
+  # for(i in seq(1:length(models))){
+  #   
+  #   modelName <- names(models)[i]
+  #   speciesModel <- models[[i]]
+  #   
+  #   print(str_c(modelName, ", ", "Aspen: ", speciesModel$coefficients['subset','cond(scale(Perc_At))']))
+  #   print(str_c(modelName, ", ", "Diameter: ", speciesModel$coefficients['subset','cond(scale(Median_DBH))']))
+  #   
+  # }
+  
+  for(timestep in timesteps){
+  
     # Load aspen cover and diameter
     aspenCover <- datasheetSpatRaster(
       ssimObject = myScenario, 
@@ -201,35 +234,64 @@ for(iteration in iterations){
     
     # Convert aspen raster to proportion (rather than percentage)
     aspenCover[] <- aspenCover[]/100
-    names(aspenCover) <- 'Perc_At'
+    names(aspenCover) <- "Perc_At"
     
-    # diameter <- datasheetSpatRaster(
-    #   ssimObject = myScenario, 
-    #   datasheet = "stsimsf_OutputSpatialStockGroup", 
-    #   iteration = iteration, 
-    #   timestep = timestep,
-    #   filterColumn = "StockGroupID",
-    #   filterValue = "Diameter (cm) [Type]")
+    diameter <- datasheetSpatRaster(
+      ssimObject = myScenario, 
+      datasheet = "stsimsf_OutputSpatialStockGroup", 
+      iteration = iteration, 
+      timestep = timestep,
+      filterColumn = "StockGroupID",
+      filterValue = "Diameter (cm) [Type]")
+    names(diameter) <- "Median_DBH"
     
     # Convert TST raster to binary Y/N cut data
-    # cut <- datasheetSpatRaster(
-    #   ssimObject = myScenario, 
-    #   datasheet = "stsim_OutputSpatialTST", 
-    #   iteration = iteration, 
-    #   timestep = timestep)[] %>% 
-    #   as.vector() %>% 
-    #   {case_when(. <= 60 ~ "Y", TRUE ~ "N")}
+    cutReclasMatrix <- matrix(data = c(0,60,1), ncol = 3, nrow = 1)
+    
+    cutRaster <- datasheetSpatRaster(
+      ssimObject = myScenario, 
+      datasheet = "stsim_OutputSpatialTST", 
+      iteration = iteration, 
+      timestep = timestep)
+    
+    crs(cutRaster) <- crs(templateRaster)
+    
+    cut <- cutRaster %>% 
+      classify(rcl = cutReclasMatrix, 
+                     include.lowest = TRUE,
+                     others = NA) %>% 
+      buffer(width = cellResolution[1]) %>% 
+      mask(mask = templateRaster)
+    
+    distanceToCut <- distance(cut, target = 0, unit = 'm')
+    names(distanceToCut) <- "dist_to_cut"
+    
+    # Calculate distance to forest edge
+    forestRcl <- matrix(c(20,30,40,41,42,43,44,50,60,70,90,
+                          NA,NA,1,1,1,1,1,NA,NA,NA,NA),
+                        ncol = 2, nrow = 11)
+    
+    forest <- datasheetSpatRaster(
+      ssimObject = myScenario, 
+      datasheet = "stsim_OutputSpatialState", 
+      iteration = iteration, 
+      timestep = timestep) %>% 
+     classify(rcl = forestRcl)
+    
+    crs(forest) <- crs(templateRaster)
+   
+    distanceToForest <- distance(forest, unit = 'm') %>% 
+      mask(templateRaster)
+    names(distanceToForest) <- "edge_near"
     
     # Create dataframe of habitat suitability model inputs
     habitatSuitabilityDf <- data.frame(Perc_At = aspenCover[], 
-                                     # Median_DBH = diameter[],
-                                       Median_DBH = 0,
-                                       edge_near = 0,
-                                       Num_2BI = 0,
-                                       Mean_decay = 0,
-                                       dist_to_cut = 0,
-                                     # cut_harvest0 = cut, 
-                                       cut_harvest0 = 'N', 
+                                       Median_DBH = diameter[],
+                                       edge_near = distanceToForest[],           
+                                       Num_Trees = rawNestwebData$MeanNumTrees,
+                                       Num_2BI = rawNestwebData$MeanNum2BI,
+                                       Mean_decay = meanDecay[],
+                                       dist_to_cut = distanceToCut[],            
                                        Site = StrataData$Site)
     
     # Load state class raster
@@ -237,7 +299,7 @@ for(iteration in iterations){
       ssimObject = myScenario, 
       datasheet = "stsim_OutputSpatialState", 
       iteration = iteration, 
-      timestep = timestep) 
+      timestep = timestep)
     
     # Combine state class and stratum raster to create habitat masking raster
     stateClassStratum <- ((stateClass * 10) + stratum) %>% suppressWarnings()
@@ -251,7 +313,7 @@ for(iteration in iterations){
       
       habitatMask <- stateClassStratum %>% 
         classify(rcl = reclassMatrix)
-      
+
       # Predict habitat suitability
       model <- models[[aSpecies]]
       habitatSuitabilityDf$pred <- predict(model, newdata = habitatSuitabilityDf, type = "response", allow.new.levels = TRUE)
@@ -271,6 +333,7 @@ for(iteration in iterations){
         # Create and write habitat raster
         rast(templateRaster, vals = habitatSuitabilityDf$finalHabitat) %>% 
           writeRaster(outputFilename,
+                      datatype = "FLT4S",
                       overwrite = TRUE,
                       NAflag = -9999)
         
