@@ -112,7 +112,7 @@ stratum <- rast(InitialConditionsSpatial$StratumFileName)
 
 # Load mean decay raster
 # zzz: Make this a relative path..?
-meanDecay <- rast(file.path("D:/nestweb/", spatialInputsDir, "mean-decay.tif"))
+meanDecay <- rast("D:/nestweb/Model-Inputs/mean-decay.tif")
 
 # Create a template raster
 templateRaster <- stratum
@@ -171,18 +171,20 @@ rm(modelNames)
 parameterTable <- imap_dfr(
   models,
   ~{
-    # Connect clean parameter names to variable names in model fit
-    parameters <- c('Aspen Cover' = 'cond(scale(Perc_At))',
-                    'Diameter' = 'cond(scale(Median_DBH))')
+    # Get list of model parameters
+    parameterList <- .x$coefficients %>% labels()
+    numberOfParameters <- parameterList[[2]] %>% length()
+    parameters <- parameterList[[2]][1:numberOfParameters]
+  
     means <- coef(.x)[parameters]
     stdErrors <- .x$coefArray[, 'Std. Error', parameters] %>% 
       apply(MARGIN = 2, FUN = mean, na.rm = TRUE) # MARGIN = 2 is used to average within columns 
     
     tibble(
       species = .y,
-      parameter = names(parameters),
+      parameter = parameters,
       mean = means,
-      sd = stdErrors)}) # Double check this assumption
+      sd = stdErrors)})
 
 for(iteration in iterations){
   # Sample parameters
@@ -190,36 +192,25 @@ for(iteration in iterations){
     mutate(value = map2_dbl(mean, sd, rnorm, n = 1))
   
   # For each species model in models, update the aspen and diameter coefficients with value in parameterTable
-  #resampledModels <- models
-  print(str_c("Iteration:", iteration))
-  
   for(i in seq(1:length(models))){
+    # Get species model and list of model parameters
+    speciesModel <- models[[i]]
+    parameterList <- speciesModel$coefficients %>% labels()
+    numberOfParameters <- parameterList[[2]] %>% length()
+    parameters <- parameterList[[2]][1:numberOfParameters]
     
+    # Get model name to filter paramer tables
     modelName <- names(models)[i]
     parameterTableIt <- parameterTable %>% filter(species == modelName)
-      
-    speciesModel <- models[[i]]
-      
-    speciesModel$coefficients['subset','cond(scale(Perc_At))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Aspen Cover'] 
-    speciesModel$coefficients['subset','cond(scale(Median_DBH))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Diameter'] 
-    speciesModel$coefficients['full','cond(scale(Perc_At))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Aspen Cover'] 
-    speciesModel$coefficients['full','cond(scale(Median_DBH))'] <- parameterTableIt$value[parameterTableIt$parameter == 'Diameter'] 
+    
+    # Overwrite coefficents  
+    for(parameter in parameters){
+      speciesModel$coefficients['subset', parameter] <- parameterTableIt$value[parameterTableIt$parameter == parameter] 
+      speciesModel$coefficients['full', parameter] <- parameterTableIt$value[parameterTableIt$parameter == parameter]
+    }
     
     models[[i]] <- speciesModel
-    
-    print(str_c(modelName, ", ", "Sampled aspen: ",parameterTableIt$value[parameterTableIt$parameter == 'Aspen Cover']))
-    print(str_c(modelName, ", ", "Sampled diameter: ", parameterTableIt$value[parameterTableIt$parameter == 'Diameter'] ))
   }
-  
-  # for(i in seq(1:length(models))){
-  #   
-  #   modelName <- names(models)[i]
-  #   speciesModel <- models[[i]]
-  #   
-  #   print(str_c(modelName, ", ", "Aspen: ", speciesModel$coefficients['subset','cond(scale(Perc_At))']))
-  #   print(str_c(modelName, ", ", "Diameter: ", speciesModel$coefficients['subset','cond(scale(Median_DBH))']))
-  #   
-  # }
   
   for(timestep in timesteps){
   
@@ -230,7 +221,7 @@ for(iteration in iterations){
       iteration = iteration, 
       timestep = timestep,
       filterColumn = "StockGroupID",
-      filterValue = "Deciduous Canopy Cover (%) [Type]")
+      filterValue = "Aspen Cover (%) [Type]")
     
     # Convert aspen raster to proportion (rather than percentage)
     aspenCover[] <- aspenCover[]/100
@@ -316,6 +307,11 @@ for(iteration in iterations){
 
       # Predict habitat suitability
       model <- models[[aSpecies]]
+      # zzz: check that model was overwritten 
+      speciesName <- aSpecies %>% str_to_lower() %>% str_replace_all(" ", "-")
+      outputModel <- file.path(tempDir, str_c(speciesName, ".model.it", iteration, ".rds")) %>% normalizePath()
+      saveRDS(model, file = outputModel)
+      
       habitatSuitabilityDf$pred <- predict(model, newdata = habitatSuitabilityDf, type = "response", allow.new.levels = TRUE)
       habitatSuitabilityDf$pred[is.nan(habitatSuitabilityDf$pred)] <- NA
       habitatSuitabilityDf$invalidHabitat <- habitatMask[] %>% as.vector()
@@ -324,6 +320,8 @@ for(iteration in iterations){
       habitatSuitabilityDf <- habitatSuitabilityDf %>% 
         mutate(finalHabitat = case_when(!is.na(invalidHabitat) ~ invalidHabitat,
                                         is.na(invalidHabitat) ~ pred))
+      
+      write_csv(habitatSuitabilityDf, file.path(tempDir, str_c(speciesName, ".raw.habitat.it", iteration, ".csv")) %>% normalizePath())
       
       # Output habitat raster
       if(timestep %in% timestepsSpatial) {
@@ -371,7 +369,7 @@ for(iteration in iterations){
               Iteration = iteration,
               Species = aSpecies
             ))}
-      
+      write_csv(OutputHabitatAmount, file.path(tempDir, str_c(speciesName, ".habitat.it", iteration, ".csv")) %>% normalizePath())
       # Increment progress bar
       progressBar()
     }
