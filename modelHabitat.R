@@ -8,9 +8,10 @@ options(stringsAsFactors=FALSE, SHAPE_RESTORE_SHX=T, useFancyQuotes = F, digits=
 library(rsyncrosim)
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(terra))
-#suppressPackageStartupMessages(library(MuMIn))
-suppressPackageStartupMessages(library(VGAM))
-suppressPackageStartupMessages(library(unmarked))
+suppressPackageStartupMessages(library(lme4))
+suppressPackageStartupMessages(library(MuMIn))
+#suppressPackageStartupMessages(library(VGAM))
+#suppressPackageStartupMessages(library(unmarked))
 suppressPackageStartupMessages(library(glmmTMB))
 
 # Setup ----
@@ -78,6 +79,9 @@ timesteps <- c(timestepsTabular, timestepsSpatial) %>%
 # Species
 species <- HabitatModel$Name
 
+# Species codes
+speciesCodes <- read_csv(file.path("D:/nestweb", tabularDataDir, "species-codes.csv"), show_col_types = FALSE)
+
 # Invalid Habitat
 invalidHabitatLookup <- InvalidHabitat %>% 
   left_join(tibble(
@@ -112,7 +116,7 @@ stratum <- rast(InitialConditionsSpatial$StratumFileName)
 
 # Load mean decay raster
 # zzz: Make this a relative path..?
-meanDecay <- rast("D:/nestweb/Model-Inputs/mean-decay.tif")
+meanDecay <- rast("D:/nestweb/Model-Inputs/Spatial/mean-decay.tif")
 
 # Create a template raster
 templateRaster <- stratum
@@ -186,30 +190,58 @@ parameterTable <- imap_dfr(
       mean = means,
       sd = stdErrors)})
 
+# Create new model objects to predict from
+averagedModels <- models
+
+for(i in seq(1:length(models))){
+  
+  # Get species name
+  speciesName <- names(models)[i]
+  
+  # Get species model and list of model parameters
+  speciesModel <- models[[i]]
+  parameterList <- speciesModel$coefficients %>% labels()
+  numberOfParameters <- parameterList[[2]] %>% length()
+  parameters <- parameterList[[2]][2:numberOfParameters] %>% str_sub(start = 12, end = -3)
+  
+  # Load species raw data
+  rawData <- read_csv(file.path("D:/nestweb/", tabularDataDir, "Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>% 
+    filter(Spp == speciesCodes$ShortName[speciesCodes$FullName == speciesName]) %>% 
+    mutate(Num_2BI = Num_2BI_FD + Num_2BI_Sx + Num_2BI_Pl,
+           type1 = c(rep(0, times = floor(nrow(.)/2)), rep(1, times = (nrow(.) - floor(nrow(.)/2))))) %>% 
+    dplyr::select(all_of(parameters), type1, Site)
+  
+  # Build model formula string
+  formulaString <- "type1 ~ "
+  for(parameter in parameters){
+    # Paste0 parameters to formul string
+    formulaString <- str_c(formulaString, "scale(", parameter, ") + ")
+  }
+  formulaString <- str_c(formulaString, "(1|Site)")
+  
+  # Build new model
+  averagedModel <- glmer(as.formula(formulaString), family= binomial, data = rawData) %>% suppressWarnings()
+  averagedModels[[i]] <- averagedModel
+}
+
+
 for(iteration in iterations){
   # Sample parameters
   parameterTable <- parameterTable %>% 
     mutate(value = map2_dbl(mean, sd, rnorm, n = 1))
   
   # For each species model in models, update the aspen and diameter coefficients with value in parameterTable
-  for(i in seq(1:length(models))){
-    # Get species model and list of model parameters
-    speciesModel <- models[[i]]
-    parameterList <- speciesModel$coefficients %>% labels()
-    numberOfParameters <- parameterList[[2]] %>% length()
-    parameters <- parameterList[[2]][1:numberOfParameters]
+  for(i in seq(1:length(averagedModels))){
     
     # Get model name to filter paramer tables
-    modelName <- names(models)[i]
+    modelName <- names(averagedModels)[i]
     parameterTableIt <- parameterTable %>% filter(species == modelName)
     
-    # Overwrite coefficents  
-    for(parameter in parameters){
-      speciesModel$coefficients['subset', parameter] <- parameterTableIt$value[parameterTableIt$parameter == parameter] 
-      speciesModel$coefficients['full', parameter] <- parameterTableIt$value[parameterTableIt$parameter == parameter]
-    }
+    # Get species model and overwrite parameter coefficients
+    speciesModel <- averagedModels[[i]]
+    speciesModel@beta <- parameterTableIt %>% pull(value) 
     
-    models[[i]] <- speciesModel
+    averagedModels[[i]] <- speciesModel
   }
   
   for(timestep in timesteps){
@@ -306,12 +338,7 @@ for(iteration in iterations){
         classify(rcl = reclassMatrix)
 
       # Predict habitat suitability
-      model <- models[[aSpecies]]
-      # zzz: check that model was overwritten 
-      speciesName <- aSpecies %>% str_to_lower() %>% str_replace_all(" ", "-")
-      outputModel <- file.path(tempDir, str_c(speciesName, ".model.it", iteration, ".rds")) %>% normalizePath()
-      saveRDS(model, file = outputModel)
-      
+      model <- averagedModels[[aSpecies]]
       habitatSuitabilityDf$pred <- predict(model, newdata = habitatSuitabilityDf, type = "response", allow.new.levels = TRUE)
       habitatSuitabilityDf$pred[is.nan(habitatSuitabilityDf$pred)] <- NA
       habitatSuitabilityDf$invalidHabitat <- habitatMask[] %>% as.vector()
@@ -320,8 +347,6 @@ for(iteration in iterations){
       habitatSuitabilityDf <- habitatSuitabilityDf %>% 
         mutate(finalHabitat = case_when(!is.na(invalidHabitat) ~ invalidHabitat,
                                         is.na(invalidHabitat) ~ pred))
-      
-      write_csv(habitatSuitabilityDf, file.path(tempDir, str_c(speciesName, ".raw.habitat.it", iteration, ".csv")) %>% normalizePath())
       
       # Output habitat raster
       if(timestep %in% timestepsSpatial) {
@@ -369,7 +394,7 @@ for(iteration in iterations){
               Iteration = iteration,
               Species = aSpecies
             ))}
-      write_csv(OutputHabitatAmount, file.path(tempDir, str_c(speciesName, ".habitat.it", iteration, ".csv")) %>% normalizePath())
+    
       # Increment progress bar
       progressBar()
     }
