@@ -9,9 +9,6 @@ library(rsyncrosim)
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(terra))
 suppressPackageStartupMessages(library(lme4))
-suppressPackageStartupMessages(library(MuMIn))
-#suppressPackageStartupMessages(library(VGAM))
-#suppressPackageStartupMessages(library(unmarked))
 suppressPackageStartupMessages(library(glmmTMB))
 
 # Setup ----
@@ -154,11 +151,7 @@ unlink(spatialOutputDir, recursive = TRUE, force = TRUE)
 
 dir.create(spatialOutputDir)
 
-# Generate filenames for potential outputs
-
-## Handle empty values ----
-
-# Main Code Here ----
+# Predict Habitat ----
 progressBar(type = "message", message = "Running main code...")
 progressBar(type = "begin", totalSteps = length(iterations) * length(timesteps) * length(species))
 
@@ -168,7 +161,6 @@ for(m in HabitatModel$ModelFileName) load(m)
 models <- modelNames %>% 
   map(get) %>% 
   set_names(HabitatModel$Name)
-#rm(list = modelNames)
 rm(modelNames)
 
 # Parameterize the sampling distribution for each parameter and model
@@ -176,13 +168,9 @@ parameterTable <- imap_dfr(
   models,
   ~{
     # Get list of model parameters
-    parameterList <- .x$coefficients %>% labels()
-    numberOfParameters <- parameterList[[2]] %>% length()
-    parameters <- parameterList[[2]][1:numberOfParameters]
-  
-    means <- coef(.x)[parameters]
-    stdErrors <- .x$coefArray[, 'Std. Error', parameters] %>% 
-      apply(MARGIN = 2, FUN = mean, na.rm = TRUE) # MARGIN = 2 is used to average within columns 
+    parameters <- fixef(.x)[1]$cond %>% names()
+    means <- fixef(.x)[1]$cond
+    stdErrors <- summary(.x)[6]$coefficients$cond[,2] 
     
     tibble(
       species = .y,
@@ -190,58 +178,25 @@ parameterTable <- imap_dfr(
       mean = means,
       sd = stdErrors)})
 
-# Create new model objects to predict from
-averagedModels <- models
-
-for(i in seq(1:length(models))){
-  
-  # Get species name
-  speciesName <- names(models)[i]
-  
-  # Get species model and list of model parameters
-  speciesModel <- models[[i]]
-  parameterList <- speciesModel$coefficients %>% labels()
-  numberOfParameters <- parameterList[[2]] %>% length()
-  parameters <- parameterList[[2]][2:numberOfParameters] %>% str_sub(start = 12, end = -3)
-  
-  # Load species raw data
-  rawData <- read_csv(file.path("D:/nestweb/", tabularDataDir, "Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>% 
-    filter(Spp == speciesCodes$ShortName[speciesCodes$FullName == speciesName]) %>% 
-    mutate(Num_2BI = Num_2BI_FD + Num_2BI_Sx + Num_2BI_Pl,
-           type1 = c(rep(0, times = floor(nrow(.)/2)), rep(1, times = (nrow(.) - floor(nrow(.)/2))))) %>% 
-    dplyr::select(all_of(parameters), type1, Site)
-  
-  # Build model formula string
-  formulaString <- "type1 ~ "
-  for(parameter in parameters){
-    # Paste0 parameters to formul string
-    formulaString <- str_c(formulaString, "scale(", parameter, ") + ")
-  }
-  formulaString <- str_c(formulaString, "(1|Site)")
-  
-  # Build new model
-  averagedModel <- glmer(as.formula(formulaString), family= binomial, data = rawData) %>% suppressWarnings()
-  averagedModels[[i]] <- averagedModel
-}
-
-
 for(iteration in iterations){
   # Sample parameters
   parameterTable <- parameterTable %>% 
     mutate(value = map2_dbl(mean, sd, rnorm, n = 1))
   
   # For each species model in models, update the aspen and diameter coefficients with value in parameterTable
-  for(i in seq(1:length(averagedModels))){
+  for(i in seq(1:length(models))){
     
     # Get model name to filter paramer tables
-    modelName <- names(averagedModels)[i]
+    modelName <- names(models)[i]
     parameterTableIt <- parameterTable %>% filter(species == modelName)
     
     # Get species model and overwrite parameter coefficients
-    speciesModel <- averagedModels[[i]]
-    speciesModel@beta <- parameterTableIt %>% pull(value) 
+    speciesModel <- models[[i]]
     
-    averagedModels[[i]] <- speciesModel
+    speciesModel$fit$par[names(speciesModel$fit$par) == "beta"] <- parameterTableIt %>% pull(value)
+    speciesModel$fit$parfull[names(speciesModel$fit$parfull) == "beta"] <- parameterTableIt %>% pull(value)
+    
+    models[[i]] <- speciesModel
   }
   
   for(timestep in timesteps){
@@ -338,7 +293,7 @@ for(iteration in iterations){
         classify(rcl = reclassMatrix)
 
       # Predict habitat suitability
-      model <- averagedModels[[aSpecies]]
+      model <- models[[aSpecies]]
       habitatSuitabilityDf$pred <- predict(model, newdata = habitatSuitabilityDf, type = "response", allow.new.levels = TRUE)
       habitatSuitabilityDf$pred[is.nan(habitatSuitabilityDf$pred)] <- NA
       habitatSuitabilityDf$invalidHabitat <- habitatMask[] %>% as.vector()
