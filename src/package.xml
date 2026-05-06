@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package name="stsimNestweb" displayName="ST-Sim Nestweb" isAddOn="True" extendsPackage="stsim" version="1.0.0" minSyncroSimVersion="3.1.0">
+
+  <!--Project Datasheets-->
+
+  <dataSheet name="SiteType" displayName="Sites" dataScope="Project" displayMember="Name">
+    <column name="Name" dataType="String" />
+    <column name="ID" displayName="ID" dataType="Integer" validationType="WholeNumber" validationCondition="None" isOptional="True"/>
+  </dataSheet>
+
+  <dataSheet name="Species" displayName="Species" dataScope="Project" displayMember="Name">
+    <column name="Name" dataType="String" />
+  </dataSheet>
+
+  <!--Scenario Datasheets-->
+
+  <dataSheet name="HabitatModel" displayName="Habitat Models">
+    <column name="Name" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="ModelFileName" displayName="Habitat Model" dataType="String" isExternalFile="True" />
+  </dataSheet>
+
+  <dataSheet name="SiteValue" displayName="Sites" isSingleRow="True">
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" isVisible="False"/>
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" isVisible="False"/>
+    <column name="FileName" displayName="Site Raster" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+  </dataSheet>
+
+  <dataSheet name="InvalidHabitat" displayName="Invalid Habitat">
+    <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="StratumId" displayName="Primary Stratum" dataType="Integer" validationType="Datasheet" formula1="stsim_Stratum" />
+    <column name="StateClassId" displayName="State Class" dataType="Integer" validationType="Datasheet" formula1="stsim_StateClass" />
+  </dataSheet>
+
+  <dataSheet name="OutputOptions" displayName="Output Options" isSingleRow="True">
+    <column name="SummaryOutputHA" displayName="Tabular" dataType="Boolean" />
+    <column name="SummaryOutputHATimesteps" displayName="Tabular every" dataType="Integer" validationType="WholeNumber" validationCondition="None" />
+    <column name="RasterOutputHA" displayName="Spatial" dataType="Boolean" />
+    <column name="RasterOutputHATimesteps" displayName="Spatial every" dataType="Integer" validationType="WholeNumber" validationCondition="None" />
+    <column name="RasterOutputHAC" displayName="Spatial change" dataType="Boolean" />
+    <column name="RasterOutputHAAverage" displayName="Spatial average" dataType="Boolean" />
+    <column name="RasterOutputHACAverage" displayName="Spatial change average" dataType="Boolean" />
+  </dataSheet>
+
+  <dataSheet name="OutputHabitatAmount" displayName="Habitat Amount">
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+    <column name="StratumId" displayName="Primary Stratum" dataType="Integer" validationType="Datasheet" formula1="stsim_Stratum" />
+    <column name="SecondaryStratumId" displayName="Secondary Stratum" dataType="Integer" validationType="Datasheet" formula1="stsim_SecondaryStratum" />
+    <column name="Site" displayName="Site" dataType="Integer" validationType="Datasheet" formula1="SiteType" />
+    <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="Amount" displayName="Amount" dataType="Double" validationType="Decimal" validationCondition="None" />
+  </dataSheet>
+
+  <dataSheet name="OutputSpatialHabitat" displayName="Habitat">
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+    <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="FileName" displayName="Habitat Probability" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+  </dataSheet>
+
+  <dataSheet name="OutputSpatialHabitatChange" displayName="Habitat Change">
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+    <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="FileName" displayName="Habitat Probability Change" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+  </dataSheet>
+
+  <dataSheet name="OutputSpatialHabitatAverage" displayName="Habitat Average">
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+    <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="FileName" displayName="Average Habitat Probability" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+  </dataSheet>
+
+  <dataSheet name="OutputSpatialHabitatChangeAverage" displayName="Habitat Change Average">
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+    <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
+    <column name="FileName" displayName="Average Habitat Probability Change" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+  </dataSheet>
+
+  <!--Transformers-->
+
+  <transformer name="modelHabitat" displayName="Model Habitat" transformerSpecificOutput="False" isRunnable="True" isStochasticTime="True" programName="RScript" programArguments="modelHabitat.R" runContext="AllowRemote" condaEnv="stsimnestweb.yml" condaEnvVersion="1" configurationSheet="stsim_RunControl">
+    <dataSheet name="OutputHabitatAmount" type="Output" />
+    <dataSheet name="OutputSpatialHabitat" type="Output" />
+    <dataSheet name="OutputOptions" type="Input" />
+    <dataSheet name="HabitatModel" type="Input" />
+    <dataSheet name="Species" type="Input" />
+    <dataSheet name="SiteType" type="Input" />
+    <dataSheet name="SiteValue" type="Input" />
+    <dataSheet name="stsim_RunControl" type="Input" />
+    <dataSheet name="stsim_Stratum" type="Input" />
+    <dataSheet name="stsim_SecondaryStratum" type="Input" />
+    <dataSheet name="stsim_StateClass" type="Input" />
+    <dataSheet name="stsim_InitialConditionsSpatial" type="Input" />
+    <dataSheet name="stsim_OutputSpatialState" type="Input" />
+    <dataSheet name="stsim_OutputSpatialTST" type="Input" />
+    <dataSheet name="stsimsf_OutputSpatialStockGroup" type="Input" />
+    <dataSheet name="stsimsf_StockType" type="Input" />
+    <dataSheet name="stsimsf_StockGroup" type="Input" />
+    <dataSheet name="stsimsf_StockGroupMembership" type="Input" />
+    <dataSheet name="InvalidHabitat" type="Input" />
+    <dataSheet name="OutputSpatialHabitatChange" type="Output" />
+  </transformer>
+
+  <transformer name="summarizeHabitat" displayName="Summarize Habitat" transformerSpecificOutput="False" isRunnable="True" programName="RScript" programArguments="summarizeHabitat.R" runContext="LocalOnly">
+    <dataSheet name="OutputSpatialHabitat" type="Input" />
+    <dataSheet name="OutputSpatialHabitatAverage" type="Output" />
+    <dataSheet name="Species" type="Input" />
+    <dataSheet name="OutputSpatialHabitatChangeAverage" type="Output" />
+    <dataSheet name="OutputSpatialHabitatChange" type="Input" />
+    <dataSheet name="OutputOptions" type="Input" />
+  </transformer>
+
+  <transformer name="Primary" isPrimary="True" isPipelineBased="True">
+    <include>
+      <transformer name="modelHabitat" />
+      <transformer name="summarizeHabitat" />
+    </include>
+  </transformer>
+
+  <!--Layouts-->
+
+  <layout type="Project" insertAfter="stsim_Advanced">
+    <group name="stsimNestwebProject" displayName="ST-Sim Nestweb">
+      <item name="SiteType" />
+      <item name="Species" />
+    </group>
+  </layout>
+
+  <layout type="Scenario" insertAfter="stsim_Advanced">
+    <group name="stsimNestwebScenario" displayName="ST-Sim Nestweb">
+      <item name="HabitatModel" showIf="inPipeline"/>
+      <item name="SiteValue" showIf="inPipeline"/>
+      <item name="InvalidHabitat" showIf="inPipeline"/>
+      <item name="OutputOptions" showIf="inPipeline"/>
+      <item name="OutputHabitatAmount" showIf="inPipeline"/>
+      <item name="OutputSpatialHabitat" showIf="inPipeline"/>
+      <item name="OutputSpatialHabitatChange" showIf="inPipeline"/>
+      <item name="OutputSpatialHabitatAverage" showIf="inPipeline"/>
+      <item name="OutputSpatialHabitatChangeAverage" showIf="inPipeline"/>
+    </group>
+  </layout>
+
+  <layout type="Chart">
+    <group name="OutputHabitatAmount" displayName="Habitat Amount">
+      <item name="Amount" displayName="Amount" dataSheet="OutputHabitatAmount" column="Amount" filter="StratumId|SecondaryStratumId|Site|Species" />
+    </group>
+  </layout>
+
+  <layout type="Map">
+    <group name="SiteValue" displayName="Sites">
+      <item name="SiteRaster" displayName="Site Raster" dataSheet="SiteValue" column="FileName" />
+    </group>
+    <group name="OutputSpatialHabitat" displayName="Habitat">
+      <item name="HabitatProbability" displayName="Habitat Probability" dataSheet="OutputSpatialHabitat" column="FileName" filter="Species"/>
+    </group>
+    <group name="OutputSpatialHabitatChange" displayName="Habitat Change">
+      <item name="HabitatProbabilityChange" displayName="Habitat Probability Change" dataSheet="OutputSpatialHabitatChange" column="FileName" filter="Species"/>
+    </group>
+    <group name="OutputSpatialHabitatAverage" displayName="Habitat Average">
+      <item name="HabitatProbabilityAverage" displayName="Average Habitat Probability" dataSheet="OutputSpatialHabitatAverage" column="FileName" filter="Species"/>
+    </group>
+    <group name="OutputSpatialHabitatChangeAverage" displayName="Habitat Change Average">
+      <item name="HabitatProbabilityChangeAverage" displayName="Average Habitat Probability Change" dataSheet="OutputSpatialHabitatChangeAverage" column="FileName" filter="Species"/>
+    </group>
+  </layout>
+
+  <updateProvider className="SyncroSim.Core.XMLUpdateProvider" classAssembly="SyncroSim.Core"/>
+
+</package>
