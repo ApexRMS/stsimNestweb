@@ -107,13 +107,6 @@
     <dataSheet name="OutputOptions" type="Input" />
   </transformer>
 
-  <transformer name="Primary" isPrimary="True" isPipelineBased="True">
-    <include>
-      <transformer name="modelHabitat" />
-      <transformer name="summarizeHabitat" />
-    </include>
-  </transformer>
-
   <!-- Layouts -->
   <layout type="Project" insertAfter="stsim_Advanced">
     <group name="stsimNestwebProject" displayName="ST-Sim Nestweb">
