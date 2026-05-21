@@ -57,20 +57,22 @@ if(OutputOptions$RasterOutputHAAverage) {
   
   for(timestep in timesteps){
     # Get all habitat suitability maps for a given timestep
-    habitatSuitability <- datasheetSpatRaster(
-      ssimObject = myScenario, 
-      datasheet = "stsimNestweb_OutputSpatialHabitat", 
-      timestep = timestep) 
-    
+    habitatSuitability <- datasheet(myScenario, "stsimNestweb_OutputSpatialHabitat",
+                                    lookupsAsFactors = FALSE) %>%
+      filter(Timestep == timestep) %>%
+      pull(FileName) %>%
+      rast()
+
     # Repeat for habitat suitability change maps
     # NB: The first timestep is excluded because no change raster is calculated
     if(OutputOptions$RasterOutputHACAverage) {
       if(timestep != min(timesteps)){
         # Get all habitat suitability change maps for a given timestep
-        habitatSuitabilityChange <- datasheetSpatRaster(
-          ssimObject = myScenario, 
-          datasheet = "stsimNestweb_OutputSpatialHabitatChange",
-          timestep = timestep) 
+        habitatSuitabilityChange <- datasheet(myScenario, "stsimNestweb_OutputSpatialHabitatChange",
+                                              lookupsAsFactors = FALSE) %>%
+          filter(Timestep == timestep) %>%
+          pull(FileName) %>%
+          rast()
       }
     }
     
