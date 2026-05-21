@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<update comment="Update stsimNestweb to version 2.0 for SyncroSim v3 compatibility">
+
+  <!-- Rename columns to follow camelCase Id convention -->
+  <action code="RenameColumn" tableName="stsimNestweb_InvalidHabitat" oldColumnName="StratumID" newColumnName="StratumId">
+  </action>
+  <action code="RenameColumn" tableName="stsimNestweb_InvalidHabitat" oldColumnName="StateClassID" newColumnName="StateClassId">
+  </action>
+
+  <action code="RenameColumn" tableName="stsimNestweb_OutputHabitatAmount" oldColumnName="StratumID" newColumnName="StratumId">
+  </action>
+  <action code="RenameColumn" tableName="stsimNestweb_OutputHabitatAmount" oldColumnName="SecondaryStratumID" newColumnName="SecondaryStratumId">
+  </action>
+
+  <!-- Rename chart variables -->
+  <action code="RenameChartVariable" oldVariableName="OutputHabitatAmount_Amount" newVariableName="OutputHabitatAmountAmount">
+  </action>
+
+  <!-- Rename map variables -->
+  <action code="RenameMapVariable" oldVariableName="SiteValue_FileName" newVariableName="SiteValueFileName">
+  </action>
+  <action code="RenameMapVariable" oldVariableName="OutputSpatialHabitat_FileName" newVariableName="OutputSpatialHabitatFileName">
+  </action>
+  <action code="RenameMapVariable" oldVariableName="OutputSpatialHabitatChange_FileName" newVariableName="OutputSpatialHabitatChangeFileName">
+  </action>
+  <action code="RenameMapVariable" oldVariableName="OutputSpatialHabitatAverage_FileName" newVariableName="OutputSpatialHabitatAverageFileName">
+  </action>
+  <action code="RenameMapVariable" oldVariableName="OutputSpatialHabitatChangeAverage_FileName" newVariableName="OutputSpatialHabitatChangeAverageFileName">
+  </action>
+
+</update>

@@ -36,11 +36,11 @@ StateClass <- datasheet(myScenario, "stsim_StateClass")
 InitialConditionsSpatial <- datasheet(myScenario, "stsim_InitialConditionsSpatial")
 OutputSpatialState <- datasheet(myScenario, "stsim_OutputSpatialState")
 
-#stsimsf
-OutputSpatialStockGroup <- datasheet(myScenario, "stsimsf_OutputSpatialStockGroup")
-StockType <- datasheet(myScenario, "stsimsf_StockType")
-StockGroup <- datasheet(myScenario, "stsimsf_StockGroup")
-StockTypeGroupMembership <- datasheet(myScenario, "stsimsf_StockTypeGroupMembership")
+# stsim stock-flow
+OutputSpatialStockGroup <- datasheet(myScenario, "stsim_OutputSpatialStockGroup")
+StockType <- datasheet(myScenario, "stsim_StockType")
+StockGroup <- datasheet(myScenario, "stsim_StockGroup")
+StockTypeGroupMembership <- datasheet(myScenario, "stsim_StockTypeGroupMembership")
 
 # stsimNetweb
 SiteType <- datasheet(myScenario, "stsimNestweb_SiteType")
@@ -99,8 +99,8 @@ invalidHabitatLookup <- InvalidHabitat %>%
   mutate(HabitatMask = 0) %>%
   bind_rows(anti_join(expand_grid(Species = names(SpeciesID), StateClassId = StateClass$Name, StratumId = Stratum$Name), .)) %>%
   unique() %>%
-  mutate(StateClassId = StateClassId %>% lookup(StateClass$Name, StateClass$ID),
-         StratumId = StratumId %>% lookup(Stratum$Name, Stratum$ID),
+  mutate(StateClassId = StateClassId %>% lookup(StateClass$Name, StateClass$Id),
+         StratumId = StratumId %>% lookup(Stratum$Name, Stratum$Id),
          StateClassStratumId = (StateClassId * 10) + StratumId) %>%
   select(Species, StateClassStratumId, HabitatMask)
 
@@ -202,10 +202,10 @@ for(iteration in iterations){
   for(timestep in timesteps){
   
     # Load aspen cover and diameter
-    aspenCover <- datasheet(myScenario, "stsimsf_OutputSpatialStockGroup",
+    aspenCover <- datasheet(myScenario, "stsim_OutputSpatialStockGroup",
                             lookupsAsFactors = FALSE) %>%
       filter(Iteration == iteration, Timestep == timestep,
-             StockGroupID == "Aspen Cover (%) [Type]") %>%
+             StockGroupId == "Aspen Cover (%) [Type]") %>%
       pull(Filename) %>%
       rast()
     
@@ -213,10 +213,10 @@ for(iteration in iterations){
     aspenCover[] <- aspenCover[]/100
     names(aspenCover) <- "Perc_At"
     
-    diameter <- datasheet(myScenario, "stsimsf_OutputSpatialStockGroup",
+    diameter <- datasheet(myScenario, "stsim_OutputSpatialStockGroup",
                           lookupsAsFactors = FALSE) %>%
       filter(Iteration == iteration, Timestep == timestep,
-             StockGroupID == "Diameter (cm) [Type]") %>%
+             StockGroupId == "Diameter (cm) [Type]") %>%
       pull(Filename) %>%
       rast()
     names(diameter) <- "Median_DBH"
@@ -376,8 +376,8 @@ saveDatasheet(myScenario, OutputSpatialHabitatChange, "stsimNestweb_OutputSpatia
 # Save tabular output
 OutputHabitatAmount <- OutputHabitatAmount %>%
   mutate(
-    StratumId = StratumId %>% lookup(Stratum$ID, Stratum$Name),
-    SecondaryStratumId = SecondaryStratumId %>% lookup(SecondaryStratum$ID, SecondaryStratum$Name))
+    StratumId = StratumId %>% lookup(Stratum$Id, Stratum$Name),
+    SecondaryStratumId = SecondaryStratumId %>% lookup(SecondaryStratum$Id, SecondaryStratum$Name))
 saveDatasheet(myScenario, OutputHabitatAmount, "stsimNestweb_OutputHabitatAmount")
 
 

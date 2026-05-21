@@ -24,8 +24,8 @@ myScenario <- scenario()
 # Load relevant datasheets
 OutputOptions <- datasheet(myScenario, "stsimNestweb_OutputOptions")
 OutputSpatialHabitat <- datasheet(myScenario, "stsimNestweb_OutputSpatialHabitat")
-SpeciesID <- datasheet(myScenario, "stsimNestweb_Species", includeKey = TRUE) %>% 
-  pull(SpeciesID, name = Name)
+SpeciesID <- datasheet(myScenario, "stsimNestweb_Species", includeKey = TRUE) %>%
+  pull(SpeciesId, name = Name)
 
 ## Setup Parameters ----
 # Timesteps 
