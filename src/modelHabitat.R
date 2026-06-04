@@ -77,7 +77,7 @@ timesteps <- c(timestepsTabular, timestepsSpatial) %>%
 species <- HabitatModel$Name
 
 # Species codes
-speciesCodes <- read_csv(file.path("D:/nestweb", tabularDataDir, "species-codes.csv"), show_col_types = FALSE)
+# speciesCodes <- read_csv(file.path("D:/nestweb", tabularDataDir, "species-codes.csv"), show_col_types = FALSE)
 
 # Invalid Habitat
 invalidHabitatLookup <- InvalidHabitat %>%
@@ -113,7 +113,7 @@ stratum <- rast(InitialConditionsSpatial$StratumFileName)
 
 # Load mean decay raster
 # zzz: Make this a relative path..?
-meanDecay <- rast("D:/nestweb/Model-Inputs/Spatial/mean-decay.tif")
+meanDecay <- rast("./mean-decay.tif")
 
 # Create a template raster
 templateRaster <- stratum
@@ -134,7 +134,7 @@ StrataData <- data.frame(
 
 # Get mean values for other habitat model variables
 # zzz: Make this a relative path..?
-rawNestwebData <- read_csv(file.path("D:/nestweb/", tabularDataDir, "Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>% 
+rawNestwebData <- read_csv(file.path("./Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>% 
   mutate(Num_2BI = Num_2BI_FD + Num_2BI_Sx + Num_2BI_Pl) %>% 
   dplyr::select(Num_Trees, Num_2BI) %>% 
   summarise(MeanNumTrees = mean(Num_Trees),
@@ -156,6 +156,7 @@ progressBar(type = "message", message = "Running main code...")
 progressBar(type = "begin", totalSteps = length(iterations) * length(timesteps) * length(species))
 
 # Build parameter sampling table
+# zzz: apply up2date() to models - get claude's help
 modelNames <- map_chr(HabitatModel$ModelFileName, load)
 for(m in HabitatModel$ModelFileName) load(m)
 models <- modelNames %>% 
