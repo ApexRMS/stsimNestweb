@@ -159,8 +159,9 @@ progressBar(type = "begin", totalSteps = length(iterations) * length(timesteps) 
 # zzz: apply up2date() to models - get claude's help
 modelNames <- map_chr(HabitatModel$ModelFileName, load)
 for(m in HabitatModel$ModelFileName) load(m)
-models <- modelNames %>% 
-  map(get) %>% 
+models <- modelNames %>%
+  map(get) %>%
+  map(up2date) %>%
   set_names(HabitatModel$Name)
 rm(modelNames)
 
