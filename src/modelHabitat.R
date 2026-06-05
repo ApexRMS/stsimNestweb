@@ -21,6 +21,7 @@ lookup <- function(x, old, new){
 }
 
 ## Directories ----
+scriptDir <- dirname(normalizePath(sub("--file=", "", commandArgs(trailingOnly = FALSE)[grep("--file=", commandArgs(trailingOnly = FALSE))])))
 spatialInputsDir <- file.path("Model-Inputs", "Spatial")
 tabularDataDir <- file.path("Data", "Tabular")
 
@@ -112,8 +113,7 @@ scaleFactor <- 0.0001
 stratum <- rast(InitialConditionsSpatial$StratumFileName)
 
 # Load mean decay raster
-# zzz: Make this a relative path..?
-meanDecay <- rast("./mean-decay.tif")
+meanDecay <- rast(file.path(scriptDir, "mean-decay.tif"))
 
 # Create a template raster
 templateRaster <- stratum
@@ -133,8 +133,7 @@ StrataData <- data.frame(
   Site = rast(Site$FileName)[] %>% as.vector() %>% lookup(SiteType$ID, SiteType$Name))
 
 # Get mean values for other habitat model variables
-# zzz: Make this a relative path..?
-rawNestwebData <- read_csv(file.path("./Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>% 
+rawNestwebData <- read_csv(file.path(scriptDir, "Habitat selection - full dataset (30.03.2022).csv"), show_col_types = FALSE) %>%
   mutate(Num_2BI = Num_2BI_FD + Num_2BI_Sx + Num_2BI_Pl) %>% 
   dplyr::select(Num_Trees, Num_2BI) %>% 
   summarise(MeanNumTrees = mean(Num_Trees),
