@@ -18,10 +18,10 @@
   </dataSheet>
 
   <dataSheet name="SiteValue" displayName="Sites" isSingleRow="True">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" isVisible="False"/>
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" isVisible="False"/>
+    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True"/>
+    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True"/>
     <column name="FileName" displayName="Site Raster" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band"/>
-    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>
 
   <dataSheet name="InvalidHabitat" displayName="Invalid Habitat">
@@ -40,9 +40,7 @@
     <column name="RasterOutputHACAverage" displayName="Spatial change average" dataType="Boolean" />
   </dataSheet>
 
-  <dataSheet name="OutputHabitatAmount" displayName="Habitat Amount">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+  <dataSheet name="OutputHabitatAmount" displayName="Habitat Amount" hasIteration="True" hasTimestep="True">
     <column name="StratumId" displayName="Primary Stratum" dataType="Integer" validationType="Datasheet" formula1="stsim_Stratum" />
     <column name="SecondaryStratumId" displayName="Secondary Stratum" dataType="Integer" validationType="Datasheet" formula1="stsim_SecondaryStratum" />
     <column name="Site" displayName="Site" dataType="Integer" validationType="Datasheet" formula1="SiteType" />
@@ -50,36 +48,28 @@
     <column name="Amount" displayName="Amount" dataType="Double" validationType="Decimal" validationCondition="None" />
   </dataSheet>
 
-  <dataSheet name="OutputSpatialHabitat" displayName="Habitat">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+  <dataSheet name="OutputSpatialHabitat" displayName="Habitat" hasIteration="True" hasTimestep="True">
     <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
     <column name="FileName" displayName="Habitat Probability" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
-    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>
 
-  <dataSheet name="OutputSpatialHabitatChange" displayName="Habitat Change">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+  <dataSheet name="OutputSpatialHabitatChange" displayName="Habitat Change" hasIteration="True" hasTimestep="True">
     <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
     <column name="FileName" displayName="Habitat Probability Change" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
-    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>
 
-  <dataSheet name="OutputSpatialHabitatAverage" displayName="Habitat Average">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+  <dataSheet name="OutputSpatialHabitatAverage" displayName="Habitat Average" hasIteration="True" hasTimestep="True">
     <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
     <column name="FileName" displayName="Average Habitat Probability" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
-    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>
 
-  <dataSheet name="OutputSpatialHabitatChangeAverage" displayName="Habitat Change Average">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True" />
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True" />
+  <dataSheet name="OutputSpatialHabitatChangeAverage" displayName="Habitat Change Average" hasIteration="True" hasTimestep="True">
     <column name="Species" displayName="Species" dataType="Integer" validationType="Datasheet" formula1="Species" />
     <column name="FileName" displayName="Average Habitat Probability Change" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band" bandFilterColumn="Species"/>
-    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True" isVisible="False"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>
 
   <!-- Transformers -->

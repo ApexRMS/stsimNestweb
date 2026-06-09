@@ -21,7 +21,8 @@ lookup <- function(x, old, new){
 }
 
 ## Directories ----
-scriptDir <- dirname(normalizePath(sub("--file=", "", commandArgs(trailingOnly = FALSE)[grep("--file=", commandArgs(trailingOnly = FALSE))])))
+# scriptDir <- dirname(normalizePath(sub("--file=", "", commandArgs(trailingOnly = FALSE)[grep("--file=", commandArgs(trailingOnly = FALSE))])))
+scriptDir <- ssimEnvironment()$PackageDirectory
 spatialInputsDir <- file.path("Model-Inputs", "Spatial")
 tabularDataDir <- file.path("Data", "Tabular")
 
@@ -31,9 +32,9 @@ myScenario <- scenario()
 # Load relevant datasheets
 # stsim
 RunControl <- datasheet(myScenario, "stsim_RunControl")
-Stratum <- datasheet(myScenario, "stsim_Stratum")
-SecondaryStratum <- datasheet(myScenario, "stsim_SecondaryStratum")
-StateClass <- datasheet(myScenario, "stsim_StateClass")
+Stratum <- datasheet(myScenario, "stsim_Stratum", includeKey = TRUE)
+SecondaryStratum <- datasheet(myScenario, "stsim_SecondaryStratum", includeKey = TRUE)
+StateClass <- datasheet(myScenario, "stsim_StateClass", includeKey = TRUE)
 InitialConditionsSpatial <- datasheet(myScenario, "stsim_InitialConditionsSpatial")
 OutputSpatialState <- datasheet(myScenario, "stsim_OutputSpatialState")
 
@@ -51,31 +52,53 @@ Site <- datasheet(myScenario, "stsimNestweb_SiteValue")
 OutputOptions <- datasheet(myScenario, "stsimNestweb_OutputOptions")
 HabitatModel <- datasheet(myScenario, "stsimNestweb_HabitatModel")
 InvalidHabitat <- datasheet(myScenario, "stsimNestweb_InvalidHabitat")
-OutputHabitatAmount <- data.frame()
+OutputHabitatAmount <- data.frame(
+  Iteration = integer(0),
+  Timestep = integer(0),
+  StratumId = character(0),
+  SecondaryStratumId = character(0),
+  Site = character(0),
+  Species = character(0),
+  Amount = numeric(0)
+)
+
+OutputSpatialHabitat <- data.frame(
+  Iteration = integer(0),
+  Timestep = integer(0),
+  Species = character(0),
+  FileName = character(0)
+)
+
+OutputSpatialHabitatChange <- data.frame(
+  Iteration = integer(0),
+  Timestep = integer(0),
+  Species = character(0),
+  FileName = character(0)
+)
 
 ## Setup Parameters ----
-# Iterations 
+# Iterations
 iterations <- seq(RunControl$MinimumIteration, RunControl$MaximumIteration)
 
 # Timesteps
 timestepsTabular <- if(OutputOptions$SummaryOutputHA){
-  seq(RunControl$MinimumTimestep, RunControl$MaximumTimestep, by = OutputOptions$SummaryOutputHATimesteps) %>% 
-    c(RunControl$MaximumTimestep) %>% 
+  seq(RunControl$MinimumTimestep, RunControl$MaximumTimestep, by = OutputOptions$SummaryOutputHATimesteps) %>%
+    c(RunControl$MaximumTimestep) %>%
     unique()
 } else c()
 
 timestepsSpatial <- if(OutputOptions$RasterOutputHA){
-  seq(RunControl$MinimumTimestep, RunControl$MaximumTimestep, by = OutputOptions$RasterOutputHATimesteps) %>% 
-    c(RunControl$MaximumTimestep) %>% 
+  seq(RunControl$MinimumTimestep, RunControl$MaximumTimestep, by = OutputOptions$RasterOutputHATimesteps) %>%
+    c(RunControl$MaximumTimestep) %>%
     unique()
 } else c()
 
-timesteps <- c(timestepsTabular, timestepsSpatial) %>% 
-  unique() %>% 
+timesteps <- c(timestepsTabular, timestepsSpatial) %>%
+  unique() %>%
   sort()
 
 # Species
-species <- HabitatModel$Name
+species <- as.character(HabitatModel$Name)
 
 # Species codes
 # speciesCodes <- read_csv(file.path("D:/nestweb", tabularDataDir, "species-codes.csv"), show_col_types = FALSE)
@@ -100,8 +123,8 @@ invalidHabitatLookup <- InvalidHabitat %>%
   mutate(HabitatMask = 0) %>%
   bind_rows(anti_join(expand_grid(Species = names(SpeciesID), StateClassId = StateClass$Name, StratumId = Stratum$Name), .)) %>%
   unique() %>%
-  mutate(StateClassId = StateClassId %>% lookup(StateClass$Name, StateClass$Id),
-         StratumId = StratumId %>% lookup(Stratum$Name, Stratum$Id),
+  mutate(StateClassId = StateClassId %>% lookup(StateClass$Name, StateClass$StateClassId),
+         StratumId = StratumId %>% lookup(Stratum$Name, Stratum$StratumId),
          StateClassStratumId = (StateClassId * 10) + StratumId) %>%
   select(Species, StateClassStratumId, HabitatMask)
 
@@ -128,8 +151,12 @@ cellArea <- cellResolution[1]^2
 
 # Get Strata and site values
 StrataData <- data.frame(
-  StratumId = rast(InitialConditionsSpatial$StratumFileName)[] %>% as.vector(),
-  SecondaryStratumId = rast(InitialConditionsSpatial$SecondaryStratumFileName)[] %>% as.vector(),
+  StratumId = rast(InitialConditionsSpatial$StratumFileName)[] %>%
+    as.vector() %>%
+    lookup(Stratum$StratumId, Stratum$Name),
+  SecondaryStratumId = rast(InitialConditionsSpatial$SecondaryStratumFileName)[] %>%
+    as.vector() %>%
+    lookup(SecondaryStratum$SecondaryStratumId, SecondaryStratum$Name),
   Site = rast(Site$FileName)[] %>% as.vector() %>% lookup(SiteType$ID, SiteType$Name))
 
 # Get mean values for other habitat model variables
@@ -141,14 +168,8 @@ rawNestwebData <- read_csv(file.path(scriptDir, "Habitat selection - full datase
 
 ## Setup files and folders ----
 
-# Create temp folder, ensure it is empty
-tempDir <- ssimEnvironment()$TempDirectory
-
-spatialOutputDir <- file.path(tempDir, "SpatialOutputs") %>% normalizePath(mustWork = FALSE)
-
-unlink(spatialOutputDir, recursive = TRUE, force = TRUE)
-
-dir.create(spatialOutputDir)
+e <- ssimEnvironment()
+transferDir <- e$TransferDirectory
 
 # Predict Habitat ----
 progressBar(type = "message", message = "Running main code...")
@@ -156,13 +177,14 @@ progressBar(type = "begin", totalSteps = length(iterations) * length(timesteps) 
 
 # Build parameter sampling table
 # zzz: apply up2date() to models - get claude's help
-modelNames <- map_chr(HabitatModel$ModelFileName, load)
-for(m in HabitatModel$ModelFileName) load(m)
-models <- modelNames %>%
-  map(get) %>%
+models <- HabitatModel$ModelFileName %>%
+  map(~{
+    e <- new.env(parent = emptyenv())
+    load(.x, envir = e)
+    get(ls(e)[1], envir = e)
+  }) %>%
   map(up2date) %>%
   set_names(HabitatModel$Name)
-rm(modelNames)
 
 # Parameterize the sampling distribution for each parameter and model
 parameterTable <- imap_dfr(
@@ -277,52 +299,64 @@ for(iteration in iterations){
     
     for(aSpecies in species){
       # Create habitat mask
-      reclassMatrix <- invalidHabitatLookup %>% 
-        filter(Species == aSpecies) %>%  
-        select(-Species) %>% 
+      reclassMatrix <- invalidHabitatLookup %>%
+        filter(Species == aSpecies) %>%
+        select(-Species) %>%
         as.matrix()
-      
-      habitatMask <- stateClassStratum %>% 
-        classify(rcl = reclassMatrix)
+
+      habitatMask <- stateClassStratum %>%
+        classify(rcl = reclassMatrix, others = NA)
 
       # Predict habitat suitability
       model <- models[[aSpecies]]
       habitatSuitabilityDf$pred <- predict(model, newdata = habitatSuitabilityDf, type = "response", allow.new.levels = TRUE)
       habitatSuitabilityDf$pred[is.nan(habitatSuitabilityDf$pred)] <- NA
       habitatSuitabilityDf$invalidHabitat <- habitatMask[] %>% as.vector()
-      
+
       # Mask out invalid habitat
-      habitatSuitabilityDf <- habitatSuitabilityDf %>% 
+      habitatSuitabilityDf <- habitatSuitabilityDf %>%
         mutate(finalHabitat = case_when(!is.na(invalidHabitat) ~ invalidHabitat,
                                         is.na(invalidHabitat) ~ pred))
-      
+
       # Output habitat raster
       if(timestep %in% timestepsSpatial) {
-        outputFilename <- file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif")) %>% 
-          normalizePath(mustWork = FALSE)
-        
+        hsFilename <- file.path(transferDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif"))
+
         # Create and write habitat raster
-        rast(templateRaster, vals = habitatSuitabilityDf$finalHabitat) %>% 
-          writeRaster(outputFilename,
+        rast(templateRaster, vals = habitatSuitabilityDf$finalHabitat) %>%
+          writeRaster(hsFilename,
                       datatype = "FLT4S",
                       overwrite = TRUE,
                       NAflag = -9999)
-        
+
+        OutputSpatialHabitat <- rbind(OutputSpatialHabitat, data.frame(
+          Iteration = as.integer(iteration),
+          Timestep = as.integer(timestep),
+          Species = aSpecies,
+          FileName = hsFilename
+        ))
+
         # Output habitat change raster
         if(OutputOptions$RasterOutputHAC){
           if(timestep != min(timestepsSpatial)){
-            outputFilename = file.path(spatialOutputDir, str_c("hsc.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif")) %>% 
-              normalizePath(mustWork = FALSE)
-            
+            hscFilename <- file.path(transferDir, str_c("hsc.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif"))
+
             habitatData <- data.frame(
-              tsMin = rast(file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", min(timestepsSpatial), ".tif")))[] %>% as.vector(),
-              tsCurrent = rast(file.path(spatialOutputDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", timestep, ".tif")))[] %>% as.vector()) %>% 
+              tsMin = rast(file.path(transferDir, str_c("hs.sp", SpeciesID[aSpecies], ".it", iteration, ".ts", min(timestepsSpatial), ".tif")))[] %>% as.vector(),
+              tsCurrent = rast(hsFilename)[] %>% as.vector()) %>%
               mutate(difference = tsCurrent - tsMin)
-            
-            rast(templateRaster, vals = habitatData$difference) %>% 
-              writeRaster(outputFilename, 
+
+            rast(templateRaster, vals = habitatData$difference) %>%
+              writeRaster(hscFilename,
                           overwrite = TRUE,
                           NAflag = -9999)
+
+            OutputSpatialHabitatChange <- rbind(OutputSpatialHabitatChange, data.frame(
+              Iteration = as.integer(iteration),
+              Timestep = as.integer(timestep),
+              Species = aSpecies,
+              FileName = hscFilename
+            ))
           }
         }
       }
@@ -338,8 +372,8 @@ for(iteration in iterations){
             group_by(StratumId, SecondaryStratumId, Site) %>%
             summarise(Amount = sum(Amount) * cellArea * scaleFactor, .groups = "drop") %>% 
             mutate(
-              Timestep = timestep,
-              Iteration = iteration,
+              Timestep = as.integer(timestep),
+              Iteration = as.integer(iteration),
               Species = aSpecies
             ))}
     
@@ -349,36 +383,9 @@ for(iteration in iterations){
   }
 }
 
-# Save spatial outputs
-OutputSpatialHabitat <- tibble(FileName = list.files(spatialOutputDir, "hs\\..+tif", full.names = TRUE) %>% normalizePath()) %>%
-  mutate(
-    temp = basename(FileName),
-    Iteration = temp %>% str_extract("it\\d+") %>% str_replace("it", "") %>% as.numeric(),
-    Timestep = temp %>% str_extract("ts\\d+") %>% str_replace("ts", "") %>% as.numeric(),
-    Species = temp %>% str_extract("sp\\d+") %>% str_replace("sp", "") %>% as.numeric(),
-    Species = lookup(Species, SpeciesID, names(SpeciesID))) %>% 
-  dplyr::select(-temp) %>% 
-  as.data.frame()
-
+# Save outputs
 saveDatasheet(myScenario, OutputSpatialHabitat, "stsimNestweb_OutputSpatialHabitat")
-
-OutputSpatialHabitatChange <- tibble(FileName = list.files(spatialOutputDir, "hsc\\..+tif", full.names = TRUE) %>% normalizePath()) %>%
-  mutate(
-    temp = basename(FileName),
-    Iteration = temp %>% str_extract("it\\d+") %>% str_replace("it", "") %>% as.numeric(),
-    Timestep = temp %>% str_extract("ts\\d+") %>% str_replace("ts", "") %>% as.numeric(),
-    Species = temp %>% str_extract("sp\\d+") %>% str_replace("sp", "") %>% as.numeric(),
-    Species = lookup(Species, SpeciesID, names(SpeciesID))) %>% 
-  dplyr::select(-temp) %>% 
-  as.data.frame()
-
 saveDatasheet(myScenario, OutputSpatialHabitatChange, "stsimNestweb_OutputSpatialHabitatChange")
-
-# Save tabular output
-OutputHabitatAmount <- OutputHabitatAmount %>%
-  mutate(
-    StratumId = StratumId %>% lookup(Stratum$Id, Stratum$Name),
-    SecondaryStratumId = SecondaryStratumId %>% lookup(SecondaryStratum$Id, SecondaryStratum$Name))
 saveDatasheet(myScenario, OutputHabitatAmount, "stsimNestweb_OutputHabitatAmount")
 
 
