@@ -17,9 +17,7 @@
     <column name="ModelFileName" displayName="Habitat Model" dataType="String" isExternalFile="True" />
   </dataSheet>
 
-  <dataSheet name="SiteValue" displayName="Sites" isSingleRow="True">
-    <column name="Iteration" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="1" format="d" isCompositeIndex="True"/>
-    <column name="Timestep" dataType="Integer" validationType="WholeNumber" validationCondition="GreaterEqual" formula1="0" format="d" isCompositeIndex="True"/>
+  <dataSheet name="SiteValue" displayName="Sites" hasIteration="True" hasTimestep="True">
     <column name="FileName" displayName="Site Raster" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band"/>
     <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>

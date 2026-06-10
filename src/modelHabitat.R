@@ -48,7 +48,7 @@ StockTypeGroupMembership <- datasheet(myScenario, "stsim_StockTypeGroupMembershi
 SiteType <- datasheet(myScenario, "stsimNestweb_SiteType")
 SpeciesID <- datasheet(myScenario, "stsimNestweb_Species", includeKey = TRUE) %>%
   pull(SpeciesId, name = Name)
-Site <- datasheet(myScenario, "stsimNestweb_SiteValue")
+Site <- datasheet(myScenario, "stsimNestweb_SiteValue") %>% slice(1)
 OutputOptions <- datasheet(myScenario, "stsimNestweb_OutputOptions")
 HabitatModel <- datasheet(myScenario, "stsimNestweb_HabitatModel")
 InvalidHabitat <- datasheet(myScenario, "stsimNestweb_InvalidHabitat")
