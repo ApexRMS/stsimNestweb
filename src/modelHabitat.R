@@ -171,6 +171,17 @@ rawNestwebData <- read_csv(file.path(scriptDir, "Habitat selection - full datase
 e <- ssimEnvironment()
 transferDir <- e$TransferDirectory
 
+# Copy site raster once to transfer directory and register output rows for all
+# iteration x timestep combinations (required for map layout display)
+siteFilename <- file.path(transferDir, "site.tif")
+file.copy(Site$FileName, siteFilename, overwrite = TRUE)
+
+OutputSpatialSite <- expand_grid(
+  Iteration = as.integer(iterations),
+  Timestep = as.integer(timestepsSpatial)
+) %>%
+  mutate(FileName = siteFilename)
+
 # Predict Habitat ----
 progressBar(type = "message", message = "Running main code...")
 progressBar(type = "begin", totalSteps = length(iterations) * length(timesteps) * length(species))
@@ -387,6 +398,7 @@ for(iteration in iterations){
 saveDatasheet(myScenario, OutputSpatialHabitat, "stsimNestweb_OutputSpatialHabitat")
 saveDatasheet(myScenario, OutputSpatialHabitatChange, "stsimNestweb_OutputSpatialHabitatChange")
 saveDatasheet(myScenario, OutputHabitatAmount, "stsimNestweb_OutputHabitatAmount")
+if(nrow(OutputSpatialSite) > 0) saveDatasheet(myScenario, OutputSpatialSite, "stsimNestweb_OutputSpatialSite")
 
 
 # Clean up ----

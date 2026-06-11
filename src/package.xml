@@ -70,6 +70,11 @@
     <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
   </dataSheet>
 
+  <dataSheet name="OutputSpatialSite" displayName="Site" hasIteration="True" hasTimestep="True">
+    <column name="FileName" displayName="Site Raster" dataType="String" isExternalFile="True" externalFileFilter="GeoTIFF Files (*.tif)|*.tif|All Files (*.*)|*.*" isRaster="True" bandColumn="Band"/>
+    <column name="Band" displayName="Band" dataType="Integer" allowDbNull="True" isOptional="True"/>
+  </dataSheet>
+
   <!-- Transformers -->
   <transformer name="modelHabitat" displayName="Model Habitat" transformerSpecificOutput="False" isRunnable="True" isStochasticTime="True" programName="RScript" programArguments="modelHabitat.R" runContext="AllowRemote" condaEnv="stsimnestweb.yml" condaEnvVersion="1" configurationSheet="stsim_RunControl">
     <dataSheet name="OutputHabitatAmount" type="Output" />
@@ -77,6 +82,7 @@
     <dataSheet name="OutputOptions" type="Input" />
     <dataSheet name="HabitatModel" type="Input" />
     <dataSheet name="SiteValue" type="Input" />
+    <dataSheet name="OutputSpatialSite" type="Output" />
     <dataSheet name="stsim_RunControl" type="Input" />
     <dataSheet name="stsim_InitialConditionsSpatial" type="Input" />
     <dataSheet name="stsim_OutputSpatialState" type="Input" />
@@ -124,8 +130,8 @@
   </layout>
 
   <layout type="Map">
-    <group name="SiteValue" displayName="Sites">
-      <item name="SiteValueFileName" displayName="Site Raster" dataSheet="SiteValue" column="FileName" />
+    <group name="OutputSpatialSite" displayName="Sites">
+      <item name="OutputSpatialSiteFileName" displayName="Site Raster" dataSheet="OutputSpatialSite" column="FileName" />
     </group>
     <group name="OutputSpatialHabitat" displayName="Habitat">
       <item name="OutputSpatialHabitatFileName" displayName="Habitat Probability" dataSheet="OutputSpatialHabitat" column="FileName" filter="Species"/>
