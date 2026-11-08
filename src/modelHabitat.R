@@ -123,8 +123,8 @@ invalidHabitatLookup <- InvalidHabitat %>%
   mutate(HabitatMask = 0) %>%
   bind_rows(anti_join(expand_grid(Species = names(SpeciesID), StateClassId = StateClass$Name, StratumId = Stratum$Name), .)) %>%
   unique() %>%
-  mutate(StateClassId = StateClassId %>% lookup(StateClass$Name, StateClass$StateClassId),
-         StratumId = StratumId %>% lookup(Stratum$Name, Stratum$StratumId),
+  mutate(StateClassId = StateClassId %>% lookup(StateClass$Name, StateClass$Id),
+         StratumId = StratumId %>% lookup(Stratum$Name, Stratum$Id),
          StateClassStratumId = (StateClassId * 10) + StratumId) %>%
   select(Species, StateClassStratumId, HabitatMask)
 
@@ -153,10 +153,10 @@ cellArea <- cellResolution[1]^2
 StrataData <- data.frame(
   StratumId = rast(InitialConditionsSpatial$StratumFileName)[] %>%
     as.vector() %>%
-    lookup(Stratum$StratumId, Stratum$Name),
+    lookup(Stratum$Id, Stratum$Name),
   SecondaryStratumId = rast(InitialConditionsSpatial$SecondaryStratumFileName)[] %>%
     as.vector() %>%
-    lookup(SecondaryStratum$SecondaryStratumId, SecondaryStratum$Name),
+    lookup(SecondaryStratum$Id, SecondaryStratum$Name),
   Site = rast(Site$FileName)[] %>% as.vector() %>% lookup(SiteType$ID, SiteType$Name))
 
 # Get mean values for other habitat model variables
